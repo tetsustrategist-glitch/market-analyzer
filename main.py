@@ -20,83 +20,115 @@ tickers = {
     'ドル指数': 'DX-Y.NYB'
 }
 
-print(f"--- [V3.0] データ蓄積＆グラフ化開始: {datetime.now().strftime('%H:%M:%S')} ---")
+print(f"--- [V4.0] RSI & Drawdown 分析開始: {datetime.now().strftime('%H:%M:%S')} ---")
+
+# === 関数: RSI計算 ===
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
 
 # === 2. データ収集・計算 ===
 current_results = {}
 history_file = "market_history.csv"
 
-# 既存の履歴があれば読み込む、なければ空の箱を用意
+# 履歴読み込み
 if os.path.exists(history_file):
-    history_df = pd.read_csv(history_file, index_col=0)
+    try:
+        history_df = pd.read_csv(history_file, index_col=0)
+    except:
+        history_df = pd.DataFrame()
 else:
     history_df = pd.DataFrame()
 
 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
 new_row = {'Date': timestamp}
-
 results_list = []
 
 for name, ticker in tickers.items():
     try:
+        # データ取得 (RSI用に少し長めに確保)
         df = yf.Ticker(ticker).history(period="1y")
-        if df.empty: continue
+        if df.empty:
+            print(f"Skip (No Data): {name}")
+            continue
             
+        # --- 基本データ ---
         current = df['Close'].iloc[-1]
-        change = current - df['Close'].iloc[-2]
-        pct = (change / df['Close'].iloc[-2]) * 100
+        if len(df) > 1:
+            change = current - df['Close'].iloc[-2]
+            pct = (change / df['Close'].iloc[-2]) * 100
+        else:
+            change, pct = 0, 0
         
-        # Zスコア計算
-        z_score = (current - df['Close'].mean()) / df['Close'].std()
+        # --- 1. 統計的異常度 (Z-Score) ---
+        if df['Close'].std() != 0:
+            z_score = (current - df['Close'].mean()) / df['Close'].std()
+        else:
+            z_score = 0
+        # 50%を基準に補正はせず、素直な確率を表示
         prob = norm.cdf(abs(z_score)) * 100
         
-        # リスク判定
+        # --- 2. テクニカル指標 (RSI) ---
+        rsi_series = calculate_rsi(df['Close'])
+        rsi_val = rsi_series.iloc[-1]
+        
+        # --- 3. 実利指標 (3ヶ月高値からの下落率) ---
+        # 過去63営業日（約3ヶ月）の最高値を探す
+        high_3m = df['Close'].tail(63).max()
+        drawdown = ((current - high_3m) / high_3m) * 100
+        
+        # リスク判定ロジック (複合判定)
         risk, color = "通常", "green"
+        # Zスコアが異常、かつRSIも過熱している場合に警告
         if abs(z_score) > 1.5: risk, color = "注意", "#ffcc00"
         if abs(z_score) > 2.0: risk, color = "危険", "red"
         
-        # 結果リスト格納
         results_list.append({
             'name': name, 'price': current, 'change': change, 'pct': pct,
             'z': z_score, 'prob': prob, 'risk': risk, 'color': color,
-            'ticker_key': name # グラフ用キー
+            'rsi': rsi_val, 'drawdown': drawdown,
+            'ticker_key': name
         })
-        
-        # 履歴用データに追加
         new_row[name] = current
 
     except Exception as e:
-        print(f"Error {name}: {e}")
+        print(f"Error processing {name}: {e}")
 
-# HYG/LQD比率計算
+# HYG/LQD比率
 hyg = next((x for x in results_list if 'HYG' in x['name']), None)
 lqd = next((x for x in results_list if 'LQD' in x['name']), None)
-ratio_val = hyg['price'] / lqd['price'] if hyg and lqd else 0
+ratio_val = hyg['price'] / lqd['price'] if (hyg and lqd and lqd['price']!=0) else 0
 new_row['HYG/LQD'] = ratio_val
 
-# === 3. 履歴の保存 (CSV) ===
-# 新しい行をDataFrameにして結合
-new_df = pd.DataFrame([new_row]).set_index('Date')
-history_df = pd.concat([history_df, new_df])
+# === 3. 履歴保存 ===
+try:
+    new_df = pd.DataFrame([new_row]).set_index('Date')
+    history_df = pd.concat([history_df, new_df])
+    history_df = history_df[~history_df.index.duplicated(keep='last')]
+    history_df.to_csv(history_file)
+except Exception as e:
+    print(f"History Save Error: {e}")
 
-# 重複削除（念のため）と保存
-history_df = history_df[~history_df.index.duplicated(keep='last')]
-history_df.to_csv(history_file)
-print("✅ 履歴データをCSVに追記しました。")
+# === 4. グラフデータ ===
+chart_json = "[]"
+try:
+    chart_data = history_df.tail(30).reset_index()
+    chart_json = chart_data.to_json(orient='records')
+except: pass
 
-# === 4. グラフ用データの作成 (JSON化) ===
-# 直近30回分のみ抽出してグラフにする
-chart_data = history_df.tail(30).reset_index()
-chart_json = chart_data.to_json(orient='records')
-
-# === 5. HTML生成 (Chart.js付き) ===
+# === 5. HTML生成 (デザイン強化版) ===
 def create_html(mode="light"):
     if mode == "light":
         bg, text, card, header_bg = "#f4f4f9", "#333", "white", "#e8f5e9"
         btn_text, link_target = "🌑 ダークモード", "report_dark.html"
+        sub_text = "#666"
     else:
         bg, text, card, header_bg = "#121212", "#e0e0e0", "#2d2d2d", "#333"
         btn_text, link_target = "☀️ ライトモード", "report_light.html"
+        sub_text = "#aaa"
 
     html = f"""
     <!DOCTYPE html>
@@ -104,42 +136,44 @@ def create_html(mode="light"):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>市場AI分析 ({mode})</title>
+        <title>Market Sniper V4 ({mode})</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
-            body {{ font-family: 'Helvetica Neue', Arial, sans-serif; background-color: {bg}; color: {text}; margin: 0; padding: 20px; }}
-            .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }}
-            .card {{ background: {card}; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); overflow: hidden; padding-bottom: 10px; }}
-            .header {{ background: {header_bg}; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: {text}; }}
-            .content {{ padding: 15px 20px; }}
-            .row {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }}
-            .price {{ font-size: 1.6em; font-weight: bold; }}
-            .badge {{ padding: 4px 10px; border-radius: 20px; font-size: 0.75em; color: white; }}
-            canvas {{ max-height: 150px; width: 100%; margin-top: 10px; }}
+            body {{ font-family: sans-serif; background-color: {bg}; color: {text}; margin: 0; padding: 20px; }}
+            .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; max-width: 1400px; margin: 0 auto; }}
+            .card {{ background: {card}; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); padding: 15px; }}
+            .header {{ display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }}
+            .price {{ font-size: 1.6em; font-weight: bold; margin-bottom: 5px;}}
+            .main-stats {{ display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid {sub_text}; padding-bottom: 8px; margin-bottom: 8px; }}
+            .sub-stats {{ display: flex; justify-content: space-between; font-size: 0.9em; color: {sub_text}; }}
+            .badge {{ padding: 3px 10px; border-radius: 10px; color: white; font-size: 0.8em; }}
+            canvas {{ max-height: 80px; width: 100%; margin-top: 5px; }}
             a.button {{ display: inline-block; padding: 8px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-weight: bold; }}
         </style>
     </head>
     <body>
-        <div style="max-width: 1400px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;">
-            <h1 style="margin: 0; font-size: 1.5em;">📈 Market AI V3</h1>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; max-width: 1400px; margin: 0 auto;">
+            <h1>🎯 Market Sniper V4</h1>
             <div>
-                <a href="{history_file}" download class="button" style="background:#28a745; margin-right:10px;">💾 CSVDL</a>
+                <a href="{history_file}" download class="button" style="background:#28a745;">💾 CSV</a>
                 <a href="{link_target}" class="button">{btn_text}</a>
             </div>
         </div>
-
-        <div style="max-width: 1400px; margin: 0 auto 20px; text-align: center; padding: 15px; background: {card}; border-radius: 12px; border-left: 6px solid #007bff;">
-            <div style="font-size: 1.2em; font-weight: bold;">HYG/LQD 比率: {ratio_val:.4f}</div>
-            <canvas id="chart_ratio"></canvas>
+        <div style="text-align:center; margin-bottom: 20px;">
+            <h3>HYG/LQD 比率: {ratio_val:.4f}</h3>
         </div>
-
         <div class="container">
     """
     
     for r in results_list:
+        canvas_id = f"chart_{results_list.index(r)}"
         diff_color = "#4caf50" if r['change'] >= 0 else "#ff5252"
         sign = "+" if r['change'] >= 0 else ""
-        canvas_id = f"chart_{results_list.index(r)}"
+        
+        # ドローダウンの色分け（-5%超えたら青＝買い場シグナル）
+        dd_color = sub_text
+        if r['drawdown'] < -5: dd_color = "#007bff" 
+        if r['drawdown'] < -10: dd_color = "#ff5252" # 暴落警戒
         
         html += f"""
             <div class="card">
@@ -147,55 +181,47 @@ def create_html(mode="light"):
                     <span>{r['name']}</span>
                     <span class="badge" style="background:{r['color']}">{r['risk']}</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">{r['price']:.2f}</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:{r['color']}">{r['prob']:.0f}%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:{diff_color}; font-weight:bold;">{sign}{r['change']:.2f} ({sign}{r['pct']:.2f}%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="{canvas_id}"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:{r['color']}">{r['prob']:.0f}%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>{r['rsi']:.1f}</strong>
+                    </div>
+                    <div style="color:{dd_color}; font-weight:bold;">
+                        3ヶ月高値比: {r['drawdown']:.2f}%
+                    </div>
+                </div>
+                
+                <canvas id="{canvas_id}"></canvas>
             </div>
         """
 
-    # JavaScriptでグラフを描画
     html += f"""
         </div>
         <script>
             const historyData = {chart_json};
-            const labels = historyData.map(d => d.Date.split(' ')[0]); // 日付だけ抽出
-            
-            // 共通グラフ設定
+            const labels = historyData.map(d => d.Date.split(' ')[0]);
             const commonOptions = {{
                 responsive: true, maintainAspectRatio: false,
                 plugins: {{ legend: {{ display: false }} }},
                 scales: {{ x: {{ display: false }}, y: {{ display: false }} }},
-                elements: {{ point: {{ radius: 0 }} }} // 点を消して線だけにする
+                elements: {{ point: {{ radius: 0 }} }}
             }};
-
-            // HYG/LQD比率グラフ
-            new Chart(document.getElementById('chart_ratio'), {{
-                type: 'line',
-                data: {{
-                    labels: labels,
-                    datasets: [{{
-                        data: historyData.map(d => d['HYG/LQD']),
-                        borderColor: '#007bff', borderWidth: 2, tension: 0.1, fill: false
-                    }}]
-                }},
-                options: {{...commonOptions, scales: {{ y: {{ display: true }} }} }}
-            }});
-
-            // 各銘柄のグラフ生成
     """
     
     for r in results_list:
         canvas_id = f"chart_{results_list.index(r)}"
-        color = r['color'] if r['color'] != 'green' else '#4caf50' # 緑は見やすく調整
-        
+        color = r['color'] if r['color'] != 'green' else '#4caf50'
         html += f"""
             new Chart(document.getElementById('{canvas_id}'), {{
                 type: 'line',
@@ -210,14 +236,9 @@ def create_html(mode="light"):
             }});
         """
 
-    html += """
-        </script>
-    </body>
-    </html>
-    """
+    html += "</script></body></html>"
     return html
 
-# === 6. 書き出し ===
 with open("report_light.html", "w", encoding="utf-8") as f: f.write(create_html("light"))
 with open("report_dark.html", "w", encoding="utf-8") as f: f.write(create_html("dark"))
-print("✅ V3分析完了！CSV蓄積＆グラフ描画を含めて更新しました。")
+print("✅ V4.0 (RSI/Drawdown) 分析完了")
