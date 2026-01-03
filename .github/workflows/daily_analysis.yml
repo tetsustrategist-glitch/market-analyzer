@@ -38,6 +38,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git add report_light.html report_dark.html
+          # CSVファイルも保存リストに追加
+          git add report_light.html report_dark.html market_history.csv
           git commit -m "Update market report [skip ci]" || exit 0
           git push
