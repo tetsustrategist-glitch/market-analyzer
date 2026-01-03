@@ -4,35 +4,32 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>市場AI分析 (dark)</title>
+        <title>Market Sniper V4 (dark)</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
-            body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
-            .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-            .card { background: #2d2d2d; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); overflow: hidden; padding-bottom: 10px; }
-            .header { background: #333; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #e0e0e0; }
-            .content { padding: 15px 20px; }
-            .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
-            .price { font-size: 1.6em; font-weight: bold; }
-            .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75em; color: white; }
-            canvas { max-height: 150px; width: 100%; margin-top: 10px; }
+            body { font-family: sans-serif; background-color: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
+            .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; max-width: 1400px; margin: 0 auto; }
+            .card { background: #2d2d2d; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); padding: 15px; }
+            .header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 5px; }
+            .price { font-size: 1.6em; font-weight: bold; margin-bottom: 5px;}
+            .main-stats { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #aaa; padding-bottom: 8px; margin-bottom: 8px; }
+            .sub-stats { display: flex; justify-content: space-between; font-size: 0.9em; color: #aaa; }
+            .badge { padding: 3px 10px; border-radius: 10px; color: white; font-size: 0.8em; }
+            canvas { max-height: 80px; width: 100%; margin-top: 5px; }
             a.button { display: inline-block; padding: 8px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-weight: bold; }
         </style>
     </head>
     <body>
-        <div style="max-width: 1400px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;">
-            <h1 style="margin: 0; font-size: 1.5em;">📈 Market AI V3</h1>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; max-width: 1400px; margin: 0 auto;">
+            <h1>🎯 Market Sniper V4</h1>
             <div>
-                <a href="market_history.csv" download class="button" style="background:#28a745; margin-right:10px;">💾 CSVDL</a>
+                <a href="market_history.csv" download class="button" style="background:#28a745;">💾 CSV</a>
                 <a href="report_light.html" class="button">☀️ ライトモード</a>
             </div>
         </div>
-
-        <div style="max-width: 1400px; margin: 0 auto 20px; text-align: center; padding: 15px; background: #2d2d2d; border-radius: 12px; border-left: 6px solid #007bff;">
-            <div style="font-size: 1.2em; font-weight: bold;">HYG/LQD 比率: 0.7323</div>
-            <canvas id="chart_ratio"></canvas>
+        <div style="text-align:center; margin-bottom: 20px;">
+            <h3>HYG/LQD 比率: 0.7323</h3>
         </div>
-
         <div class="container">
     
             <div class="card">
@@ -40,17 +37,28 @@
                     <span>S&P500</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">6858.47</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">92%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+12.97 (+0.19%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_0"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">92%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>45.7</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -1.06%
+                    </div>
+                </div>
+                
+                <canvas id="chart_0"></canvas>
             </div>
         
             <div class="card">
@@ -58,17 +66,28 @@
                     <span>VIX指数</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">14.51</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">80%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#ff5252; font-weight:bold;">-0.44 (-2.94%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_1"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">80%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>48.1</strong>
+                    </div>
+                    <div style="color:#ff5252; font-weight:bold;">
+                        3ヶ月高値比: -45.08%
+                    </div>
+                </div>
+                
+                <canvas id="chart_1"></canvas>
             </div>
         
             <div class="card">
@@ -76,17 +95,28 @@
                     <span>FANG+</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">67.02</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">73%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#ff5252; font-weight:bold;">-1.03 (-1.51%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_2"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">73%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>26.8</strong>
+                    </div>
+                    <div style="color:#007bff; font-weight:bold;">
+                        3ヶ月高値比: -9.29%
+                    </div>
+                </div>
+                
+                <canvas id="chart_2"></canvas>
             </div>
         
             <div class="card">
@@ -94,17 +124,28 @@
                     <span>2244(US Tech)</span>
                     <span class="badge" style="background:#ffcc00">注意</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">3158.00</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#ff5252; font-weight:bold;">-19.00 (-0.60%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_3"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#ffcc00">94%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>47.8</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -1.80%
+                    </div>
+                </div>
+                
+                <canvas id="chart_3"></canvas>
             </div>
         
             <div class="card">
@@ -112,17 +153,28 @@
                     <span>米国10年債利回り</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">4.19</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">71%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+0.02 (+0.58%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_4"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">71%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>57.4</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -0.17%
+                    </div>
+                </div>
+                
+                <canvas id="chart_4"></canvas>
             </div>
         
             <div class="card">
@@ -130,17 +182,28 @@
                     <span>HYG(ハイ債)</span>
                     <span class="badge" style="background:#ffcc00">注意</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">80.67</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+0.04 (+0.05%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_5"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#ffcc00">94%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>64.4</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -0.05%
+                    </div>
+                </div>
+                
+                <canvas id="chart_5"></canvas>
             </div>
         
             <div class="card">
@@ -148,17 +211,28 @@
                     <span>LQD(適格債)</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">110.16</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">88%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#ff5252; font-weight:bold;">-0.03 (-0.03%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_6"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">88%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>46.2</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -1.34%
+                    </div>
+                </div>
+                
+                <canvas id="chart_6"></canvas>
             </div>
         
             <div class="card">
@@ -166,17 +240,28 @@
                     <span>ゴールド(GLDM)</span>
                     <span class="badge" style="background:#ffcc00">注意</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">85.74</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">96%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+0.37 (+0.43%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_7"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#ffcc00">96%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>55.1</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -4.43%
+                    </div>
+                </div>
+                
+                <canvas id="chart_7"></canvas>
             </div>
         
             <div class="card">
@@ -184,17 +269,28 @@
                     <span>ドル円</span>
                     <span class="badge" style="background:#ffcc00">注意</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">156.73</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+0.32 (+0.20%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_8"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:#ffcc00">94%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>56.1</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -0.60%
+                    </div>
+                </div>
+                
+                <canvas id="chart_8"></canvas>
             </div>
         
             <div class="card">
@@ -202,46 +298,40 @@
                     <span>ドル指数</span>
                     <span class="badge" style="background:green">通常</span>
                 </div>
-                <div class="content">
-                    <div class="row">
+                
+                <div class="main-stats">
+                    <div>
                         <div class="price">98.42</div>
-                        <div style="font-size:1.5em; font-weight:bold; color:green">74%</div>
-                    </div>
-                    <div class="row">
                         <div style="color:#4caf50; font-weight:bold;">+0.14 (+0.14%)</div>
-                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
-                    <canvas id="chart_9"></canvas>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8em; opacity:0.8;">転換確率</div>
+                        <div style="font-size:1.4em; font-weight:bold; color:green">74%</div>
+                    </div>
                 </div>
+
+                <div class="sub-stats">
+                    <div>
+                        RSI(14): <strong>51.9</strong>
+                    </div>
+                    <div style="color:#aaa; font-weight:bold;">
+                        3ヶ月高値比: -1.81%
+                    </div>
+                </div>
+                
+                <canvas id="chart_9"></canvas>
             </div>
         
         </div>
         <script>
-            const historyData = [{"Date":"2026-01-03 18:57","S&P500":6858.4702148438,"VIX\u6307\u6570":14.5100002289,"FANG+":67.0199966431,"2244(US Tech)":3158.0,"\u7c73\u56fd10\u5e74\u50b5\u5229\u56de\u308a":4.1869997978,"HYG(\u30cf\u30a4\u50b5)":80.6699981689,"LQD(\u9069\u683c\u50b5)":110.1600036621,"\u30b4\u30fc\u30eb\u30c9(GLDM)":85.7399978638,"\u30c9\u30eb\u5186":156.7310028076,"\u30c9\u30eb\u6307\u6570":98.4199981689,"HYG\/LQD":0.732298434}];
-            const labels = historyData.map(d => d.Date.split(' ')[0]); // 日付だけ抽出
-            
-            // 共通グラフ設定
+            const historyData = [{"Date":"2026-01-03 18:57","S&P500":6858.4702148438,"VIX\u6307\u6570":14.5100002289,"FANG+":67.0199966431,"2244(US Tech)":3158.0,"\u7c73\u56fd10\u5e74\u50b5\u5229\u56de\u308a":4.1869997978,"HYG(\u30cf\u30a4\u50b5)":80.6699981689,"LQD(\u9069\u683c\u50b5)":110.1600036621,"\u30b4\u30fc\u30eb\u30c9(GLDM)":85.7399978638,"\u30c9\u30eb\u5186":156.7310028076,"\u30c9\u30eb\u6307\u6570":98.4199981689,"HYG\/LQD":0.732298434},{"Date":"2026-01-03 20:28","S&P500":6858.4702148438,"VIX\u6307\u6570":14.5100002289,"FANG+":67.0199966431,"2244(US Tech)":3158.0,"\u7c73\u56fd10\u5e74\u50b5\u5229\u56de\u308a":4.1869997978,"HYG(\u30cf\u30a4\u50b5)":80.6699981689,"LQD(\u9069\u683c\u50b5)":110.1600036621,"\u30b4\u30fc\u30eb\u30c9(GLDM)":85.7399978638,"\u30c9\u30eb\u5186":156.7310028076,"\u30c9\u30eb\u6307\u6570":98.4199981689,"HYG\/LQD":0.732298434}];
+            const labels = historyData.map(d => d.Date.split(' ')[0]);
             const commonOptions = {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { x: { display: false }, y: { display: false } },
-                elements: { point: { radius: 0 } } // 点を消して線だけにする
+                elements: { point: { radius: 0 } }
             };
-
-            // HYG/LQD比率グラフ
-            new Chart(document.getElementById('chart_ratio'), {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: historyData.map(d => d['HYG/LQD']),
-                        borderColor: '#007bff', borderWidth: 2, tension: 0.1, fill: false
-                    }]
-                },
-                options: {...commonOptions, scales: { y: { display: true } } }
-            });
-
-            // 各銘柄のグラフ生成
     
             new Chart(document.getElementById('chart_0'), {
                 type: 'line',
@@ -362,8 +452,4 @@
                 },
                 options: commonOptions
             });
-        
-        </script>
-    </body>
-    </html>
-    
+        </script></body></html>
