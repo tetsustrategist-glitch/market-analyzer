@@ -3,86 +3,100 @@ import pandas as pd
 import numpy as np
 from scipy.stats import norm
 from datetime import datetime
+import os
+import json
 
-# === 1. 設定: プロ仕様の監視リスト ===
+# === 1. 設定: 監視リスト ===
 tickers = {
-    # --- 市場の王道 ---
     'S&P500': '^GSPC',
     'VIX指数': '^VIX',
-    
-    # --- グロース・先導株 (牽引役) ---
-    'FANG+ (米ハイテク)': 'FNGS',  # ETNを代用
-    '2244 (US Tech 20)': '2244.T', # 東証ETF
-    
-    # --- 債券・金利 (炭鉱のカナリア) ---
+    'FANG+': 'FNGS',
+    '2244(US Tech)': '2244.T',
     '米国10年債利回り': '^TNX',
-    'HYG (ハイイールド債)': 'HYG',
-    'LQD (投資適格債)': 'LQD',
-    
-    # --- 通貨・コモディティ (真実の鏡) ---
-    'ゴールド (GLDM)': 'GLDM',
-    'ドル円 (USD/JPY)': 'JPY=X',
-    'ドル指数 (DXY)': 'DX-Y.NYB'
+    'HYG(ハイ債)': 'HYG',
+    'LQD(適格債)': 'LQD',
+    'ゴールド(GLDM)': 'GLDM',
+    'ドル円': 'JPY=X',
+    'ドル指数': 'DX-Y.NYB'
 }
 
-# 銘柄ごとの閾値調整（オプション）
-# VIXやDXYは動きが激しいので、少し緩めに見るなどの調整も可能
-custom_thresholds = {
-    'VIX指数': 2.0, # VIXは2σ超えで危険判定
-}
-
-print(f"--- [プロ仕様] 分析開始: {datetime.now().strftime('%H:%M:%S')} ---")
+print(f"--- [V3.0] データ蓄積＆グラフ化開始: {datetime.now().strftime('%H:%M:%S')} ---")
 
 # === 2. データ収集・計算 ===
-results = []
+current_results = {}
+history_file = "market_history.csv"
+
+# 既存の履歴があれば読み込む、なければ空の箱を用意
+if os.path.exists(history_file):
+    history_df = pd.read_csv(history_file, index_col=0)
+else:
+    history_df = pd.DataFrame()
+
+timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+new_row = {'Date': timestamp}
+
+results_list = []
+
 for name, ticker in tickers.items():
     try:
-        # 日本株(2244.T)などはタイムゾーンが違うので注意が必要だが、今回は終値ベースで簡易処理
         df = yf.Ticker(ticker).history(period="1y")
-        if df.empty:
-            print(f"Skip: {name}")
-            continue
+        if df.empty: continue
             
         current = df['Close'].iloc[-1]
         change = current - df['Close'].iloc[-2]
         pct = (change / df['Close'].iloc[-2]) * 100
         
         # Zスコア計算
-        mean = df['Close'].mean()
-        std = df['Close'].std()
-        z_score = (current - mean) / std
+        z_score = (current - df['Close'].mean()) / df['Close'].std()
         prob = norm.cdf(abs(z_score)) * 100
         
         # リスク判定
-        threshold_caution = 1.5
-        threshold_danger = 2.0
-        
         risk, color = "通常", "green"
-        if abs(z_score) > threshold_caution: risk, color = "注意", "#ffcc00"
-        if abs(z_score) > threshold_danger: risk, color = "危険", "red"
+        if abs(z_score) > 1.5: risk, color = "注意", "#ffcc00"
+        if abs(z_score) > 2.0: risk, color = "危険", "red"
         
-        # 逆相関の指標（VIX, 利回り, ドル円）は「上がる＝危険」だが、
-        # 統計的異常値という意味では同じロジックでOK。
-        # ただし、VIXが「低すぎる(楽観)」のもリスクなので、絶対値で判定。
-
-        results.append({
+        # 結果リスト格納
+        results_list.append({
             'name': name, 'price': current, 'change': change, 'pct': pct,
-            'z': z_score, 'prob': prob, 'risk': risk, 'color': color
+            'z': z_score, 'prob': prob, 'risk': risk, 'color': color,
+            'ticker_key': name # グラフ用キー
         })
+        
+        # 履歴用データに追加
+        new_row[name] = current
+
     except Exception as e:
         print(f"Error {name}: {e}")
 
-# HYG/LQD比率
-hyg = next((x for x in results if 'HYG' in x['name']), None)
-lqd = next((x for x in results if 'LQD' in x['name']), None)
+# HYG/LQD比率計算
+hyg = next((x for x in results_list if 'HYG' in x['name']), None)
+lqd = next((x for x in results_list if 'LQD' in x['name']), None)
 ratio_val = hyg['price'] / lqd['price'] if hyg and lqd else 0
+new_row['HYG/LQD'] = ratio_val
 
-# === 3. HTML生成関数 ===
+# === 3. 履歴の保存 (CSV) ===
+# 新しい行をDataFrameにして結合
+new_df = pd.DataFrame([new_row]).set_index('Date')
+history_df = pd.concat([history_df, new_df])
+
+# 重複削除（念のため）と保存
+history_df = history_df[~history_df.index.duplicated(keep='last')]
+history_df.to_csv(history_file)
+print("✅ 履歴データをCSVに追記しました。")
+
+# === 4. グラフ用データの作成 (JSON化) ===
+# 直近30回分のみ抽出してグラフにする
+chart_data = history_df.tail(30).reset_index()
+chart_json = chart_data.to_json(orient='records')
+
+# === 5. HTML生成 (Chart.js付き) ===
 def create_html(mode="light"):
     if mode == "light":
-        bg_color, text_color, card_bg, header_bg, btn_text, link_target = "#f4f4f9", "#333", "white", "#e8f5e9", "🌑 ダークモードへ", "report_dark.html"
+        bg, text, card, header_bg = "#f4f4f9", "#333", "white", "#e8f5e9"
+        btn_text, link_target = "🌑 ダークモード", "report_dark.html"
     else:
-        bg_color, text_color, card_bg, header_bg, btn_text, link_target = "#121212", "#e0e0e0", "#2d2d2d", "#333", "☀️ ライトモードへ", "report_light.html"
+        bg, text, card, header_bg = "#121212", "#e0e0e0", "#2d2d2d", "#333"
+        btn_text, link_target = "☀️ ライトモード", "report_light.html"
 
     html = f"""
     <!DOCTYPE html>
@@ -91,40 +105,41 @@ def create_html(mode="light"):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>市場AI分析 ({mode})</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
-            body {{ font-family: 'Helvetica Neue', Arial, sans-serif; background-color: {bg_color}; color: {text_color}; margin: 0; padding: 20px; }}
-            .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }}
-            .card {{ background: {card_bg}; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); overflow: hidden; }}
-            .header {{ background: {header_bg}; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: {text_color}; border-bottom: 1px solid rgba(0,0,0,0.05); }}
-            .content {{ padding: 20px; }}
-            .row {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }}
-            .price {{ font-size: 1.8em; font-weight: bold; letter-spacing: -0.5px; }}
-            .change {{ font-weight: bold; font-size: 1.0em; }}
-            .prob-label {{ font-size: 0.8em; opacity: 0.7; }}
-            .prob-val {{ font-size: 2.0em; font-weight: bold; }}
-            .badge {{ padding: 4px 12px; border-radius: 20px; font-size: 0.75em; font-weight: bold; color: white; letter-spacing: 0.5px; }}
-            a.button {{ display: inline-block; padding: 8px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-size: 0.9em; font-weight: bold; transition: opacity 0.2s; }}
-            a.button:hover {{ opacity: 0.8; }}
+            body {{ font-family: 'Helvetica Neue', Arial, sans-serif; background-color: {bg}; color: {text}; margin: 0; padding: 20px; }}
+            .container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }}
+            .card {{ background: {card}; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); overflow: hidden; padding-bottom: 10px; }}
+            .header {{ background: {header_bg}; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: {text}; }}
+            .content {{ padding: 15px 20px; }}
+            .row {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }}
+            .price {{ font-size: 1.6em; font-weight: bold; }}
+            .badge {{ padding: 4px 10px; border-radius: 20px; font-size: 0.75em; color: white; }}
+            canvas {{ max-height: 150px; width: 100%; margin-top: 10px; }}
+            a.button {{ display: inline-block; padding: 8px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-weight: bold; }}
         </style>
     </head>
     <body>
-        <div style="max-width: 1200px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;">
-            <h1 style="margin: 0; font-size: 1.5em;">📈 Market AI Dashboard</h1>
-            <a href="{link_target}" class="button">{btn_text}</a>
+        <div style="max-width: 1400px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0; font-size: 1.5em;">📈 Market AI V3</h1>
+            <div>
+                <a href="{history_file}" download class="button" style="background:#28a745; margin-right:10px;">💾 CSVDL</a>
+                <a href="{link_target}" class="button">{btn_text}</a>
+            </div>
         </div>
-        
-        <div style="max-width: 1200px; margin: 0 auto 30px; text-align: center; padding: 20px; background: {card_bg}; border-radius: 12px; border-left: 6px solid #007bff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="font-size: 0.9em; opacity: 0.7; margin-bottom: 5px;">Risk Sentiment Indicator</div>
-            <div style="font-size: 1.2em; font-weight: bold;">HYG/LQD 比率: <span style="font-size: 1.5em;">{ratio_val:.4f}</span></div>
-            <div style="font-size: 0.8em; margin-top: 5px; opacity: 0.6;">更新: {datetime.now().strftime('%Y/%m/%d %H:%M')}</div>
+
+        <div style="max-width: 1400px; margin: 0 auto 20px; text-align: center; padding: 15px; background: {card}; border-radius: 12px; border-left: 6px solid #007bff;">
+            <div style="font-size: 1.2em; font-weight: bold;">HYG/LQD 比率: {ratio_val:.4f}</div>
+            <canvas id="chart_ratio"></canvas>
         </div>
 
         <div class="container">
     """
     
-    for r in results:
+    for r in results_list:
         diff_color = "#4caf50" if r['change'] >= 0 else "#ff5252"
         sign = "+" if r['change'] >= 0 else ""
+        canvas_id = f"chart_{results_list.index(r)}"
         
         html += f"""
             <div class="card">
@@ -135,21 +150,74 @@ def create_html(mode="light"):
                 <div class="content">
                     <div class="row">
                         <div class="price">{r['price']:.2f}</div>
-                        <div class="prob-val" style="color:{r['color']}">{r['prob']:.0f}%</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:{r['color']}">{r['prob']:.0f}%</div>
                     </div>
                     <div class="row">
-                        <div class="change" style="color:{diff_color}">{sign}{r['change']:.2f} ({sign}{r['pct']:.2f}%)</div>
-                        <div class="prob-label">転換確率(Z-Score)</div>
+                        <div style="color:{diff_color}; font-weight:bold;">{sign}{r['change']:.2f} ({sign}{r['pct']:.2f}%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="{canvas_id}"></canvas>
                 </div>
             </div>
         """
+
+    # JavaScriptでグラフを描画
+    html += f"""
+        </div>
+        <script>
+            const historyData = {chart_json};
+            const labels = historyData.map(d => d.Date.split(' ')[0]); // 日付だけ抽出
+            
+            // 共通グラフ設定
+            const commonOptions = {{
+                responsive: true, maintainAspectRatio: false,
+                plugins: {{ legend: {{ display: false }} }},
+                scales: {{ x: {{ display: false }}, y: {{ display: false }} }},
+                elements: {{ point: {{ radius: 0 }} }} // 点を消して線だけにする
+            }};
+
+            // HYG/LQD比率グラフ
+            new Chart(document.getElementById('chart_ratio'), {{
+                type: 'line',
+                data: {{
+                    labels: labels,
+                    datasets: [{{
+                        data: historyData.map(d => d['HYG/LQD']),
+                        borderColor: '#007bff', borderWidth: 2, tension: 0.1, fill: false
+                    }}]
+                }},
+                options: {{...commonOptions, scales: {{ y: {{ display: true }} }} }}
+            }});
+
+            // 各銘柄のグラフ生成
+    """
     
-    html += "</div></body></html>"
+    for r in results_list:
+        canvas_id = f"chart_{results_list.index(r)}"
+        color = r['color'] if r['color'] != 'green' else '#4caf50' # 緑は見やすく調整
+        
+        html += f"""
+            new Chart(document.getElementById('{canvas_id}'), {{
+                type: 'line',
+                data: {{
+                    labels: labels,
+                    datasets: [{{
+                        data: historyData.map(d => d['{r['name']}']),
+                        borderColor: '{color}', borderWidth: 2, tension: 0.1, fill: false
+                    }}]
+                }},
+                options: commonOptions
+            }});
+        """
+
+    html += """
+        </script>
+    </body>
+    </html>
+    """
     return html
 
-# === 4. ファイル書き出し ===
+# === 6. 書き出し ===
 with open("report_light.html", "w", encoding="utf-8") as f: f.write(create_html("light"))
 with open("report_dark.html", "w", encoding="utf-8") as f: f.write(create_html("dark"))
-
-print("✅ アップグレード完了！最強の市場分析セットを出力しました。")
+print("✅ V3分析完了！CSV蓄積＆グラフ描画を含めて更新しました。")
