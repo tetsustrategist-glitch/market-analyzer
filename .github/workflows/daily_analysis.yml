@@ -4,7 +4,8 @@ name: Daily Market Analysis
 on:
   # 1. スケジュール実行 (日本時間の朝6時頃)
   schedule:
-    - cron: '0 21 * * *'
+    # 毎日 21:00(JST 06:00) と 09:00(JST 18:00) に実行
+    - cron: '0 9,21 * * *'
   # 2. 手動実行ボタン (テスト用)
   workflow_dispatch:
 
