@@ -1,0 +1,42 @@
+name: Daily Market Analysis
+
+# いつ動くかの設定
+on:
+  # 1. スケジュール実行 (日本時間の朝6時頃)
+  schedule:
+    - cron: '0 21 * * *'
+  # 2. 手動実行ボタン (テスト用)
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # ロボットに「書き込み権限」を与える（重要）
+    permissions:
+      contents: write
+    
+    steps:
+      # 1. リポジトリのファイルを持ってくる
+      - uses: actions/checkout@v4
+
+      # 2. Pythonをセットアップする
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 3. 必要な部品(yfinanceなど)をインストール
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. 分析プログラムを実行
+      - name: Run analysis script
+        run: python main.py
+
+      # 5. 生成されたレポートを保存（コミット）する
+      - name: Commit and push report
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add report_light.html report_dark.html
+          git commit -m "Update market report [skip ci]" || exit 0
+          git push
