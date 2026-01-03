@@ -5,108 +5,365 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>市場AI分析 (light)</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
-            .container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-            .card { background: white; width: 100%; max-width: 450px; border-radius: 10px; margin-bottom: 10px; padding-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-            .header { background: #e8f5e9; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; color: #333; }
-            .content { padding: 15px; display: flex; justify-content: space-between; }
-            .price { font-size: 1.8em; font-weight: bold; }
-            a.button { display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-weight: bold; }
+            body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 20px; }
+            .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
+            .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.15); overflow: hidden; padding-bottom: 10px; }
+            .header { background: #e8f5e9; padding: 12px 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #333; }
+            .content { padding: 15px 20px; }
+            .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+            .price { font-size: 1.6em; font-weight: bold; }
+            .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75em; color: white; }
+            canvas { max-height: 150px; width: 100%; margin-top: 10px; }
+            a.button { display: inline-block; padding: 8px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 20px; font-weight: bold; }
         </style>
     </head>
     <body>
-        <div style="text-align: right; margin-bottom: 20px;">
-            <a href="report_dark.html" class="button">🌑 ダークモードへ</a>
+        <div style="max-width: 1400px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0; font-size: 1.5em;">📈 Market AI V3</h1>
+            <div>
+                <a href="market_history.csv" download class="button" style="background:#28a745; margin-right:10px;">💾 CSVDL</a>
+                <a href="report_dark.html" class="button">🌑 ダークモード</a>
+            </div>
         </div>
-        <h1 style="text-align:center">📈 市場動向AI分析 (light)</h1>
-        <div style="text-align:center; margin-bottom: 20px; padding: 10px; background: white; border-radius: 10px;">
-            <h3>HYG/LQD 比率: 0.7323</h3>
+
+        <div style="max-width: 1400px; margin: 0 auto 20px; text-align: center; padding: 15px; background: white; border-radius: 12px; border-left: 6px solid #007bff;">
+            <div style="font-size: 1.2em; font-weight: bold;">HYG/LQD 比率: 0.7323</div>
+            <canvas id="chart_ratio"></canvas>
         </div>
+
         <div class="container">
     
             <div class="card">
                 <div class="header">
                     <span>S&P500</span>
-                    <span style="background:green; color:white; padding:2px 10px; border-radius:10px; font-size:0.8em;">通常</span>
+                    <span class="badge" style="background:green">通常</span>
                 </div>
                 <div class="content">
-                    <div>
+                    <div class="row">
                         <div class="price">6858.47</div>
-                        <div style="color:#4caf50">12.97 (0.19%)</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">92%</div>
                     </div>
-                    <div style="text-align:right">
-                        <div>転換確率</div>
-                        <div style="font-size:2em; font-weight:bold; color:green">92%</div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+12.97 (+0.19%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="chart_0"></canvas>
                 </div>
             </div>
         
             <div class="card">
                 <div class="header">
                     <span>VIX指数</span>
-                    <span style="background:green; color:white; padding:2px 10px; border-radius:10px; font-size:0.8em;">通常</span>
+                    <span class="badge" style="background:green">通常</span>
                 </div>
                 <div class="content">
-                    <div>
+                    <div class="row">
                         <div class="price">14.51</div>
-                        <div style="color:#ff5252">-0.44 (-2.94%)</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">80%</div>
                     </div>
-                    <div style="text-align:right">
-                        <div>転換確率</div>
-                        <div style="font-size:2em; font-weight:bold; color:green">80%</div>
+                    <div class="row">
+                        <div style="color:#ff5252; font-weight:bold;">-0.44 (-2.94%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="chart_1"></canvas>
+                </div>
+            </div>
+        
+            <div class="card">
+                <div class="header">
+                    <span>FANG+</span>
+                    <span class="badge" style="background:green">通常</span>
+                </div>
+                <div class="content">
+                    <div class="row">
+                        <div class="price">67.02</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">73%</div>
+                    </div>
+                    <div class="row">
+                        <div style="color:#ff5252; font-weight:bold;">-1.03 (-1.51%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
+                    </div>
+                    <canvas id="chart_2"></canvas>
+                </div>
+            </div>
+        
+            <div class="card">
+                <div class="header">
+                    <span>2244(US Tech)</span>
+                    <span class="badge" style="background:#ffcc00">注意</span>
+                </div>
+                <div class="content">
+                    <div class="row">
+                        <div class="price">3158.00</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
+                    </div>
+                    <div class="row">
+                        <div style="color:#ff5252; font-weight:bold;">-19.00 (-0.60%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
+                    </div>
+                    <canvas id="chart_3"></canvas>
                 </div>
             </div>
         
             <div class="card">
                 <div class="header">
                     <span>米国10年債利回り</span>
-                    <span style="background:green; color:white; padding:2px 10px; border-radius:10px; font-size:0.8em;">通常</span>
+                    <span class="badge" style="background:green">通常</span>
                 </div>
                 <div class="content">
-                    <div>
+                    <div class="row">
                         <div class="price">4.19</div>
-                        <div style="color:#4caf50">0.02 (0.58%)</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">71%</div>
                     </div>
-                    <div style="text-align:right">
-                        <div>転換確率</div>
-                        <div style="font-size:2em; font-weight:bold; color:green">71%</div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+0.02 (+0.58%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="chart_4"></canvas>
                 </div>
             </div>
         
             <div class="card">
                 <div class="header">
-                    <span>HYG (ハイイールド債)</span>
-                    <span style="background:#ffcc00; color:white; padding:2px 10px; border-radius:10px; font-size:0.8em;">注意</span>
+                    <span>HYG(ハイ債)</span>
+                    <span class="badge" style="background:#ffcc00">注意</span>
                 </div>
                 <div class="content">
-                    <div>
+                    <div class="row">
                         <div class="price">80.67</div>
-                        <div style="color:#4caf50">0.04 (0.05%)</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
                     </div>
-                    <div style="text-align:right">
-                        <div>転換確率</div>
-                        <div style="font-size:2em; font-weight:bold; color:#ffcc00">94%</div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+0.04 (+0.05%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="chart_5"></canvas>
                 </div>
             </div>
         
             <div class="card">
                 <div class="header">
-                    <span>LQD (投資適格債)</span>
-                    <span style="background:green; color:white; padding:2px 10px; border-radius:10px; font-size:0.8em;">通常</span>
+                    <span>LQD(適格債)</span>
+                    <span class="badge" style="background:green">通常</span>
                 </div>
                 <div class="content">
-                    <div>
+                    <div class="row">
                         <div class="price">110.16</div>
-                        <div style="color:#ff5252">-0.03 (-0.03%)</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">88%</div>
                     </div>
-                    <div style="text-align:right">
-                        <div>転換確率</div>
-                        <div style="font-size:2em; font-weight:bold; color:green">88%</div>
+                    <div class="row">
+                        <div style="color:#ff5252; font-weight:bold;">-0.03 (-0.03%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
                     </div>
+                    <canvas id="chart_6"></canvas>
                 </div>
             </div>
-        </div></body></html>
+        
+            <div class="card">
+                <div class="header">
+                    <span>ゴールド(GLDM)</span>
+                    <span class="badge" style="background:#ffcc00">注意</span>
+                </div>
+                <div class="content">
+                    <div class="row">
+                        <div class="price">85.74</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">96%</div>
+                    </div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+0.37 (+0.43%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
+                    </div>
+                    <canvas id="chart_7"></canvas>
+                </div>
+            </div>
+        
+            <div class="card">
+                <div class="header">
+                    <span>ドル円</span>
+                    <span class="badge" style="background:#ffcc00">注意</span>
+                </div>
+                <div class="content">
+                    <div class="row">
+                        <div class="price">156.73</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:#ffcc00">94%</div>
+                    </div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+0.32 (+0.20%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
+                    </div>
+                    <canvas id="chart_8"></canvas>
+                </div>
+            </div>
+        
+            <div class="card">
+                <div class="header">
+                    <span>ドル指数</span>
+                    <span class="badge" style="background:green">通常</span>
+                </div>
+                <div class="content">
+                    <div class="row">
+                        <div class="price">98.42</div>
+                        <div style="font-size:1.5em; font-weight:bold; color:green">74%</div>
+                    </div>
+                    <div class="row">
+                        <div style="color:#4caf50; font-weight:bold;">+0.14 (+0.14%)</div>
+                        <div style="font-size:0.8em; opacity:0.7;">異常検知率</div>
+                    </div>
+                    <canvas id="chart_9"></canvas>
+                </div>
+            </div>
+        
+        </div>
+        <script>
+            const historyData = [{"Date":"2026-01-03 18:57","S&P500":6858.4702148438,"VIX\u6307\u6570":14.5100002289,"FANG+":67.0199966431,"2244(US Tech)":3158.0,"\u7c73\u56fd10\u5e74\u50b5\u5229\u56de\u308a":4.1869997978,"HYG(\u30cf\u30a4\u50b5)":80.6699981689,"LQD(\u9069\u683c\u50b5)":110.1600036621,"\u30b4\u30fc\u30eb\u30c9(GLDM)":85.7399978638,"\u30c9\u30eb\u5186":156.7310028076,"\u30c9\u30eb\u6307\u6570":98.4199981689,"HYG\/LQD":0.732298434}];
+            const labels = historyData.map(d => d.Date.split(' ')[0]); // 日付だけ抽出
+            
+            // 共通グラフ設定
+            const commonOptions = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                elements: { point: { radius: 0 } } // 点を消して線だけにする
+            };
+
+            // HYG/LQD比率グラフ
+            new Chart(document.getElementById('chart_ratio'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['HYG/LQD']),
+                        borderColor: '#007bff', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: {...commonOptions, scales: { y: { display: true } } }
+            });
+
+            // 各銘柄のグラフ生成
+    
+            new Chart(document.getElementById('chart_0'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['S&P500']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_1'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['VIX指数']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_2'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['FANG+']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_3'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['2244(US Tech)']),
+                        borderColor: '#ffcc00', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_4'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['米国10年債利回り']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_5'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['HYG(ハイ債)']),
+                        borderColor: '#ffcc00', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_6'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['LQD(適格債)']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_7'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['ゴールド(GLDM)']),
+                        borderColor: '#ffcc00', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_8'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['ドル円']),
+                        borderColor: '#ffcc00', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+            new Chart(document.getElementById('chart_9'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: historyData.map(d => d['ドル指数']),
+                        borderColor: '#4caf50', borderWidth: 2, tension: 0.1, fill: false
+                    }]
+                },
+                options: commonOptions
+            });
+        
+        </script>
+    </body>
+    </html>
+    
